@@ -1,11 +1,16 @@
 {
+  "name": "controle-ferias-seg",
+  "version": "1.0.0",
   "license": "0BSD",
   "main": "index.js",
+  "homepage": "https://kleitonbm.github.io/Controle_Ferias_Seg",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "predeploy": "npx expo export -p web",
+    "deploy": "gh-pages -d dist"
   },
   "dependencies": {
     "expo": "~54.0.37",
@@ -16,6 +21,9 @@
     "react-native-paper": "4.9.2",
     "@supabase/supabase-js": "*",
     "@react-native-async-storage/async-storage": "2.2.0"
+  },
+  "devDependencies": {
+    "gh-pages": "^6.3.0"
   },
   "private": true
 }
