@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
     View, Text, StyleSheet, Alert, ActivityIndicator, 
-    SafeAreaView, Platform 
+    SafeAreaView, Platform, TouchableOpacity, ScrollView 
 } from 'react-native';
 import { supabase } from './lib/supabase';
 
@@ -265,7 +265,7 @@ const gerarEscalaFerista = (agendamentos, listaFuncionarios) => {
     return mapaFerista;
 };
 
-// --- 4. COMPONENTE PRINCIPAL (SEGURANÇA EXCLUSIVO) ---
+// --- 4. COMPONENTE PRINCIPAL (APP) ---
 
 export default function App() {
     const [currentScreen, setCurrentScreen] = useState('HOME');
@@ -292,11 +292,17 @@ export default function App() {
 
             const mappedSchedules = (sch || []).map(s => ({
                 ...s,
+                id: s.id,
                 employeeId: s.employee_id || s.employeeId,
+                employee_id: s.employee_id || s.employeeId,
                 employeeName: s.employee_name || s.employeeName,
+                employee_name: s.employee_name || s.employeeName,
                 startDate: s.data_inicio || s.startDate,
+                data_inicio: s.data_inicio || s.startDate,
                 endDate: s.data_fim || s.endDate,
-                durationDays: s.duration_days || s.durationDays || 30
+                data_fim: s.data_fim || s.endDate,
+                durationDays: s.duration_days || s.durationDays || 30,
+                duration_days: s.duration_days || s.durationDays || 30
             }));
 
             setEmployees(emp || []);
@@ -343,7 +349,7 @@ export default function App() {
         return gerarEscalaFerista(schedules, employees);
     }, [schedules, employees]);
 
-    // Salvar Agendamento com Normalização e Fallback de Colunas
+    // Salvar Agendamento
     const handleSaveSchedule = async (record) => {
         try {
             const empId = record.employee_id || record.employeeId;
@@ -370,7 +376,6 @@ export default function App() {
                     duration_days: parseInt(dur, 10)
                 }]);
 
-            // Tentativa fallback se as colunas forem camelCase
             if (error && error.message.includes('column')) {
                 const fallback = await supabase
                     .from('seguranca_schedules')
@@ -475,28 +480,27 @@ export default function App() {
                     onOpenRegister={() => setCurrentScreen('FUNCIONARIOS')}
                     onOpenMonthly={() => setCurrentScreen('MENSAL')}
                     onOpenSchedule={(d) => { 
-    if (d) {
-        // Garante que o objeto tenha todas as variações de propriedades esperadas pela tela de edição
-        const normalized = {
-            ...d,
-            id: d.id,
-            employeeId: d.employee_id || d.employeeId,
-            employee_id: d.employee_id || d.employeeId,
-            employeeName: d.employee_name || d.employeeName,
-            employee_name: d.employee_name || d.employeeName,
-            startDate: d.data_inicio || d.startDate,
-            data_inicio: d.data_inicio || d.startDate,
-            endDate: d.data_fim || d.endDate,
-            data_fim: d.data_fim || d.endDate,
-            durationDays: d.duration_days || d.durationDays || d.dias || 30
-        };
-        setScheduleToEdit(normalized);
-        setCurrentScreen('EDITAR');
-    } else {
-        setScheduleToEdit(null);
-        setCurrentScreen('AGENDAR');
-    }
-}}
+                        if (d) {
+                            const normalized = {
+                                ...d,
+                                id: d.id,
+                                employeeId: d.employee_id || d.employeeId,
+                                employee_id: d.employee_id || d.employeeId,
+                                employeeName: d.employee_name || d.employeeName,
+                                employee_name: d.employee_name || d.employeeName,
+                                startDate: d.data_inicio || d.startDate,
+                                data_inicio: d.data_inicio || d.startDate,
+                                endDate: d.data_fim || d.endDate,
+                                data_fim: d.data_fim || d.endDate,
+                                durationDays: d.duration_days || d.durationDays || d.dias || 30
+                            };
+                            setScheduleToEdit(normalized);
+                            setCurrentScreen('EDITAR');
+                        } else {
+                            setScheduleToEdit(null);
+                            setCurrentScreen('AGENDAR');
+                        }
+                    }}
                     onDeleteSchedules={handleDeleteSchedules}
                 />
             )}
@@ -521,6 +525,7 @@ export default function App() {
                 <EdicaoFeriasScreen 
                     scheduleToEdit={scheduleToEdit} 
                     employees={employees} 
+                    schedules={schedules}
                     onUpdate={handleUpdateSchedule} 
                     onCancel={() => setCurrentScreen('HOME')} 
                 />
