@@ -1,12 +1,15 @@
 {
   "expo": {
     "name": "controle-de-ferias---seguranca",
-    "slug": "snack-0505b5fe-03dc-4b27-87fb-dd5901092577",
+    "slug": "Controle_Ferias_Seg",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "experiments": {
+      "baseUrl": "/Controle_Ferias_Seg"
+    },
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -23,7 +26,9 @@
       "edgeToEdgeEnabled": true
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "static"
     }
   }
 }
