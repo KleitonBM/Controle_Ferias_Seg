@@ -41,7 +41,6 @@ const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: 6 }, (_, index) => (CURRENT_YEAR - 2) + index);
 const WEEK_DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
-// Ordem de precedência para ordenação por Letra: A=1, B=2, C=3, D=4, Ferista=5
 const getLetraWeight = (letra) => {
     const l = (letra || '').trim().toUpperCase();
     if (l === 'A') return 1;
@@ -105,7 +104,6 @@ export default function HomeScreen({
     const [showMonthPicker, setShowMonthPicker] = useState(false);
     const [showYearPicker, setShowYearPicker] = useState(false);
     
-    // Estados do Modal de Filtro
     const [showFilterModal, setShowFilterModal] = useState(false);
     const [filterSearchText, setFilterSearchText] = useState('');
     
@@ -118,7 +116,6 @@ export default function HomeScreen({
     const headerScrollRef = useRef(null);
     const gridScrollRef = useRef(null);
 
-    // Colaboradores Ativos ORDENADOS POR LETRA e Nome
     const activeEmployees = useMemo(() => {
         const list = (employees || []).filter(e => e.status !== false);
         return list.sort((a, b) => {
@@ -169,19 +166,31 @@ export default function HomeScreen({
             return style.backgroundColor !== COLORS.OFF ? 'TRABALHO' : 'FOLGA';
         };
 
+        // 1. Encontra o último dia de trabalho antes das férias
         let saida = new Date(start);
         saida.setDate(saida.getDate() - 1);
-        while (getDayType(saida) === 'FOLGA') saida.setDate(saida.getDate() - 1);
-        saida.setDate(saida.getDate() + 1);
+        while (getDayType(saida) === 'FOLGA') {
+            saida.setDate(saida.getDate() - 1);
+        }
+        
+        // 2. A saída antecipada (folga) é o PRIMEIRO dia da folga após esse último dia de trabalho
+        let saidaFolga = new Date(saida);
+        saidaFolga.setDate(saidaFolga.getDate() + 1);
+        while (getDayType(saidaFolga) === 'TRABALHO') {
+            saidaFolga.setDate(saidaFolga.getDate() + 1);
+        }
 
         const fim = new Date(start);
         fim.setDate(fim.getDate() + (parseInt(dur) - 1));
+        
         let retorno = new Date(fim);
         retorno.setDate(retorno.getDate() + 1);
-        while (getDayType(retorno) === 'FOLGA') retorno.setDate(retorno.getDate() + 1);
+        while (getDayType(retorno) === 'FOLGA') {
+            retorno.setDate(retorno.getDate() + 1);
+        }
 
         const fmt = (d) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
-        return { saida: fmt(saida), retorno: fmt(retorno), fim: fmt(fim), inicio: fmt(start) };
+        return { saida: fmt(saidaFolga), retorno: fmt(retorno), fim: fmt(fim), inicio: fmt(start) };
     };
 
     const changeMonth = (delta) => {
@@ -318,7 +327,7 @@ export default function HomeScreen({
                 </TouchableOpacity>
             </Modal>
 
-            {/* MODAL / POPUP DE FILTRO CLEAN */}
+            {/* MODAL DE FILTRO */}
             <Modal visible={showFilterModal} transparent animationType="slide">
                 <View style={styles.modalOverlay}>
                     <View style={styles.filterPopupCard}>
@@ -393,61 +402,78 @@ export default function HomeScreen({
                 </View>
             </Modal>
 
-            {/* MODAL DE OPÇÕES DO AGENDAMENTO (EDITAR / EXCLUIR) */}
+            {/* MODAL DE OPÇÕES DO AGENDAMENTO (COM O NOVO LAYOUT DO EXEMPLO) */}
             <Modal visible={!!editingSchedule && !showConfirmDelete} transparent animationType="slide">
                 <TouchableOpacity style={styles.modalOverlay} onPress={() => setEditingSchedule(null)}>
                     <View style={styles.editModalContent}>
-                        <Text style={styles.editModalTitle}>Opções do Agendamento</Text>
                         {editingSchedule && (
-                            <View style={styles.infoRowModal}>
+                            <>
                                 {(() => {
                                     const info = getStatusEDatas(editingSchedule);
                                     const emp = getEmployeeData(editingSchedule.employeeId || editingSchedule.employee_id);
+                                    const letraBadge = emp.letra === 'Ferista' ? 'FER' : `Grupo ${emp.letra}`;
+                                    const nomeCompleto = `${editingSchedule.employeeName || emp.nome} (${letraBadge})`;
+
                                     return (
                                         <>
-                                            <Text style={styles.modalEmpName}>{editingSchedule.employeeName || emp.nome}</Text>
-                                            <View style={styles.detailBox}>
-                                                <Text style={[styles.infoLabel, {color: COLORS.PRIMARY}]}>ÚLTIMO DIA TRABALHADO</Text>
-                                                <Text style={styles.infoValue}>{info.saida}</Text>
+                                            {/* Cabeçalho do Colaborador */}
+                                            <View style={styles.exampleHeaderBox}>
+                                                <Text style={styles.exampleHeaderTitle} numberOfLines={1}>{nomeCompleto}</Text>
                                             </View>
-                                            <View style={styles.detailDivider} />
-                                            <View style={styles.detailRow}>
-                                                <View style={styles.detailItem}>
-                                                    <Text style={styles.infoLabel}>INÍCIO FÉRIAS</Text>
-                                                    <Text style={styles.infoValue}>{info.inicio}</Text>
+
+                                            {/* Bloco Saída Antecipada */}
+                                            <View style={styles.exampleCardBlue}>
+                                                <Text style={styles.exampleCardLabelCenter}>SAÍDA ANTECIPADA (FOLGA)</Text>
+                                                <Text style={styles.exampleCardValueBlue}>{info.saida}</Text>
+                                            </View>
+
+                                            {/* Início Oficial & Último Dia (Lado a Lado) */}
+                                            <View style={styles.exampleRowTwoCols}>
+                                                <View style={styles.exampleCardWhiteCol}>
+                                                    <Text style={styles.exampleCardLabel}>INÍCIO OFICIAL</Text>
+                                                    <Text style={styles.exampleCardValueDark}>{info.inicio}</Text>
                                                 </View>
-                                                <View style={styles.detailItem}>
-                                                    <Text style={styles.infoLabel}>RETORNO AO TRABALHO</Text>
-                                                    <Text style={[styles.infoValue, {color: COLORS.SAVE}]}>{info.retorno}</Text>
+                                                <View style={styles.exampleCardWhiteCol}>
+                                                    <Text style={styles.exampleCardLabel}>ÚLTIMO DIA</Text>
+                                                    <Text style={styles.exampleCardValueDark}>{info.fim}</Text>
                                                 </View>
+                                            </View>
+
+                                            {/* Retorno ao Trabalho */}
+                                            <View style={styles.exampleCardGreen}>
+                                                <Text style={styles.exampleCardLabelCenterGreen}>RETORNO AO TRABALHO ({emp.letra === 'Ferista' ? 'FERISTA' : `1ª ESCALA`})</Text>
+                                                <Text style={styles.exampleCardValueGreen}>{info.retorno}</Text>
                                             </View>
                                         </>
                                     );
                                 })()}
-                            </View>
+                            </>
                         )}
-                       <TouchableOpacity 
-    style={[styles.editBtn, {backgroundColor: '#FF9800', marginBottom: 10}]} 
-    onPress={() => { 
-        const data = { ...editingSchedule }; 
-        setEditingSchedule(null); 
-        // Pequeno delay para permitir que o Modal feche suavemente antes de trocar a tela
-        setTimeout(() => {
-            if (onOpenSchedule) {
-                onOpenSchedule(data); 
-            }
-        }, 100);
-    }}
->
-    <Text style={styles.btnT}>EDITAR AGENDAMENTO</Text>
-</TouchableOpacity>
 
-                        <TouchableOpacity 
-                            style={[styles.editBtn, {backgroundColor: COLORS.DELETE}]} 
-                            onPress={() => setShowConfirmDelete(true)}
-                        >
-                            <Text style={styles.btnT}>EXCLUIR AGENDAMENTO</Text>
-                        </TouchableOpacity>
+                        <View style={{flexDirection: 'row', gap: 10, width: '100%', marginTop: 10}}>
+                            <TouchableOpacity 
+                                style={[styles.editBtn, {backgroundColor: '#FF9800', flex: 1}]} 
+                                onPress={() => { 
+                                    // PASSANDO O OBJETO COMPLETO COM O ID CORRETAMENTE PARA EDIÇÃO
+                                    const dataParaEdicao = { ...editingSchedule }; 
+                                    setEditingSchedule(null); 
+                                    setTimeout(() => {
+                                        if (onOpenSchedule) {
+                                            onOpenSchedule(dataParaEdicao); 
+                                        }
+                                    }, 100);
+                                }}
+                            >
+                                <Text style={styles.btnT}>EDITAR</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity 
+                                style={[styles.editBtn, {backgroundColor: COLORS.DELETE, flex: 1}]} 
+                                onPress={() => setShowConfirmDelete(true)}
+                            >
+                                <Text style={styles.btnT}>EXCLUIR</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </TouchableOpacity>
             </Modal>
@@ -458,6 +484,7 @@ export default function HomeScreen({
                     <View style={styles.confirmBox}>
                         <Text style={styles.confirmTitle}>Confirmar Exclusão?</Text>
                         <Text style={styles.confirmSub}>Deseja realmente remover este agendamento de férias?</Text>
+                        <View style={{height: 10}} />
                         <View style={styles.confirmActions}>
                             <TouchableOpacity 
                                 style={[styles.confirmBtn, {backgroundColor: '#eeeeee'}]} 
@@ -485,7 +512,7 @@ export default function HomeScreen({
             {/* Header Principal Compacto */}
             <View style={styles.mainHeader}>
                 <View>
-                    <Text style={styles.mainTitle}>Equipe Turnão</Text>
+                    <Text style={styles.mainTitle}>Equipe PHXP</Text>
                     <Text style={styles.mainSub}>{MONTHS[currentDate.getMonth()]} de {currentDate.getFullYear()}</Text>
                 </View>
                 <View style={styles.switchWrapper}>
@@ -501,7 +528,7 @@ export default function HomeScreen({
                 </View>
             </View>
 
-            {/* BARRA SUPERIOR CLEAN: NAVEGAÇÃO DE DATA + BOTÃO POPUP DE FILTRO */}
+            {/* BARRA SUPERIOR CLEAN */}
             <View style={styles.topBar}>
                 <View style={styles.navRow}>
                     <TouchableOpacity style={styles.arrowBtn} onPress={() => changeMonth(-1)}><Text style={styles.arrowText}>◀</Text></TouchableOpacity>
@@ -509,7 +536,6 @@ export default function HomeScreen({
                     <TouchableOpacity style={styles.yearDisplay} onPress={() => setShowYearPicker(true)}><Text style={styles.dateDisplayText}>{currentDate.getFullYear()}</Text></TouchableOpacity>
                     <TouchableOpacity style={styles.arrowBtn} onPress={() => changeMonth(1)}><Text style={styles.arrowText}>▶</Text></TouchableOpacity>
 
-                    {/* Botão de Filtro em Pop-up */}
                     <TouchableOpacity 
                         style={[styles.filterTriggerBtn, selectedEmployees.length > 0 && styles.filterTriggerBtnActive]}
                         onPress={() => setShowFilterModal(true)}
@@ -521,10 +547,9 @@ export default function HomeScreen({
                 </View>
             </View>
 
-            {/* CONTEÚDO PRINCIPAL: TIMELINE OU GRADE DIÁRIA COM ESPAÇO AMPLIADO */}
+            {/* CONTEÚDO PRINCIPAL */}
             <View style={{ flex: 1 }}>
                 {!isCalendarTurnosView ? (
-                    /* 1. LINHA DO TEMPO */
                     <>
                         <View style={styles.stickyHeaderContainer}>
                             <View style={styles.namesHeaderCorner}>
@@ -612,7 +637,6 @@ export default function HomeScreen({
                         </ScrollView>
                     </>
                 ) : (
-                    /* 2. GRADE DIÁRIA */
                     <ScrollView style={{ flex: 1 }}>
                         <View style={styles.weekHeader}>
                             {WEEK_DAYS.map(w => (
@@ -788,7 +812,6 @@ const styles = StyleSheet.create({
     switchWrapper: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     switchLabel: { fontSize: 11, fontWeight: 'bold', color: COLORS.TEXT },
 
-    // Barra de Navegação Clean
     topBar: { paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#fff', borderBottomWidth: 1, borderColor: COLORS.LINE },
     navRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
     arrowBtn: { paddingVertical: 7, paddingHorizontal: 10, backgroundColor: '#f9f9f9', borderRadius: 8, borderWidth: 1, borderColor: COLORS.LINE },
@@ -797,7 +820,6 @@ const styles = StyleSheet.create({
     yearDisplay: { flex: 1.2, paddingVertical: 7, backgroundColor: '#f9f9f9', borderRadius: 8, borderWidth: 1, borderColor: COLORS.LINE, justifyContent: 'center', alignItems: 'center' },
     dateDisplayText: { color: COLORS.PRIMARY, fontWeight: 'bold', fontSize: 12 },
 
-    // Botão Acionador de Filtro
     filterTriggerBtn: {
         flex: 1.8,
         paddingVertical: 7,
@@ -822,7 +844,6 @@ const styles = StyleSheet.create({
         color: COLORS.PRIMARY
     },
 
-    // Modal / Pop-up de Filtro
     filterPopupCard: {
         backgroundColor: '#fff',
         width: '90%',
@@ -948,7 +969,6 @@ const styles = StyleSheet.create({
         fontSize: 12
     },
 
-    // Grade Mensal
     weekHeader: { flexDirection: 'row', backgroundColor: COLORS.HEADER, borderBottomWidth: 1, borderColor: COLORS.LINE },
     weekHeaderCell: { flex: 1, alignItems: 'center', paddingVertical: 6 },
     weekHeaderText: { fontSize: 11, fontWeight: 'bold', color: COLORS.MUTED },
@@ -963,7 +983,6 @@ const styles = StyleSheet.create({
     offIndicatorBox: { flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 75 },
     offIndicatorText: { fontSize: 10, fontWeight: 'bold', color: '#b0bec5', letterSpacing: 1 },
 
-    // Blocos de Turno
     shiftBlock: { borderRadius: 4, padding: 3 },
     shiftHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
     shiftTitle: { fontSize: 10, fontWeight: 'bold', color: '#fff', opacity: 0.95 },
@@ -976,11 +995,9 @@ const styles = StyleSheet.create({
     personNameTarget: { color: '#FFE082', fontWeight: '900' },
     emptyShiftText: { fontSize: 8, color: '#fff', opacity: 0.5, fontStyle: 'italic' },
 
-    // Item de Férias na Grade Diária
     vacationPersonButton: { backgroundColor: 'rgba(0, 0, 0, 0.2)', paddingVertical: 2, paddingHorizontal: 4, borderRadius: 4, marginTop: 2 },
     vacationPersonName: { fontSize: 10, fontWeight: 'bold', color: '#ffffff' },
 
-    // Linha do Tempo
     stickyHeaderContainer: { flexDirection: 'row', height: 40, borderBottomWidth: 1, borderColor: COLORS.LINE, backgroundColor: COLORS.HEADER, zIndex: 10 },
     namesHeaderCorner: { width: 155, borderRightWidth: 1, borderColor: COLORS.LINE, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' },
     headerScroll: { flex: 1 },
@@ -1000,28 +1017,109 @@ const styles = StyleSheet.create({
     bar: { position: 'absolute', height: 38, top: (ROW_HEIGHT - 38) / 2, borderRadius: 6, justifyContent: 'center', alignItems: 'center', zIndex: 10, elevation: 3 },
     barText: { color: '#fff', fontSize: 10, fontWeight: 'bold', paddingHorizontal: 4 },
 
-    // Rodapé
     footer: { padding: 10, flexDirection: 'row', gap: 8, backgroundColor: '#fff', borderTopWidth: 1, borderColor: COLORS.LINE },
     btn: { flex: 1, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
     btnT: { color: '#fff', fontWeight: 'bold', fontSize: 11 },
 
-    // Modais Básicos
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
     modalContent: { backgroundColor: '#fff', width: '40%', borderRadius: 12, padding: 10 },
     modalItem: { padding: 15, borderBottomWidth: 1, borderBottomColor: COLORS.LINE },
     modalText: { textAlign: 'center', fontSize: 16 },
 
-    editModalContent: { backgroundColor: '#fff', width: '90%', maxWidth: 420, borderRadius: 20, padding: 22, alignItems: 'center' },
-    editModalTitle: { fontSize: 17, fontWeight: 'bold', marginBottom: 15, color: COLORS.TEXT },
-    infoRowModal: { backgroundColor: '#f8f9fa', padding: 14, borderRadius: 14, width: '100%', marginBottom: 16, borderWidth: 1, borderColor: COLORS.LINE },
-    modalEmpName: { fontSize: 16, fontWeight: 'bold', textAlign: 'center', marginBottom: 10, color: COLORS.PRIMARY },
-    detailBox: { alignItems: 'center', paddingVertical: 6 },
-    detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
-    detailItem: { alignItems: 'center', flex: 1 },
-    detailDivider: { height: 1, backgroundColor: '#e9ecef', width: '100%', marginVertical: 4 },
-    infoLabel: { fontSize: 8, fontWeight: 'bold', color: COLORS.MUTED, marginBottom: 2 },
-    infoValue: { fontSize: 14, fontWeight: 'bold', color: COLORS.TEXT },
-    editBtn: { width: '100%', padding: 14, borderRadius: 10, alignItems: 'center' },
+    // Estilos do Modal Estilo Exemplo
+    editModalContent: { backgroundColor: '#fff', width: '92%', maxWidth: 440, borderRadius: 16, padding: 16, alignItems: 'center' },
+    
+    exampleHeaderBox: {
+        width: '100%',
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: COLORS.LINE
+    },
+    exampleHeaderTitle: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: COLORS.TEXT
+    },
+    
+    exampleCardBlue: {
+        width: '100%',
+        backgroundColor: '#EBF3FE',
+        borderRadius: 10,
+        paddingVertical: 12,
+        alignItems: 'center',
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: '#D0E3FF'
+    },
+    exampleCardLabelCenter: {
+        fontSize: 9,
+        fontWeight: 'bold',
+        color: '#5C7CAE',
+        marginBottom: 4,
+        letterSpacing: 0.5
+    },
+    exampleCardValueBlue: {
+        fontSize: 16,
+        fontWeight: '900',
+        color: '#3B64D8'
+    },
+
+    exampleRowTwoCols: {
+        flexDirection: 'row',
+        gap: 10,
+        width: '100%',
+        marginBottom: 10
+    },
+    exampleCardWhiteCol: {
+        flex: 1,
+        backgroundColor: '#fff',
+        borderRadius: 10,
+        paddingVertical: 12,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: COLORS.LINE
+    },
+    exampleCardLabel: {
+        fontSize: 9,
+        fontWeight: 'bold',
+        color: COLORS.MUTED,
+        marginBottom: 4,
+        letterSpacing: 0.5
+    },
+    exampleCardValueDark: {
+        fontSize: 15,
+        fontWeight: 'bold',
+        color: COLORS.TEXT
+    },
+
+    exampleCardGreen: {
+        width: '100%',
+        backgroundColor: '#E8F5E9',
+        borderRadius: 10,
+        paddingVertical: 12,
+        alignItems: 'center',
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#C8E6C9'
+    },
+    exampleCardLabelCenterGreen: {
+        fontSize: 9,
+        fontWeight: 'bold',
+        color: '#2E7D32',
+        marginBottom: 4,
+        letterSpacing: 0.5
+    },
+    exampleCardValueGreen: {
+        fontSize: 16,
+        fontWeight: '900',
+        color: '#2E7D32'
+    },
+
+    editBtn: { padding: 14, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
 
     confirmBox: { backgroundColor: '#fff', width: '85%', maxWidth: 360, padding: 20, borderRadius: 16, alignItems: 'center' },
     confirmTitle: { fontSize: 17, fontWeight: 'bold', color: COLORS.DELETE, marginBottom: 8 },

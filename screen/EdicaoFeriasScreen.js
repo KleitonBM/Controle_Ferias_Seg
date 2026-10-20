@@ -108,13 +108,25 @@ export default function EdicaoFeriasScreen({ scheduleToEdit, employees, schedule
 
                 if (ciclo < 1) return { ok: false, msg: "Período aquisitivo ainda não completado." };
 
+                // Identifica de forma ampla todas as possíveis chaves de ID do registo atual
+                const currentId = String(scheduleToEdit.id || scheduleToEdit._id || scheduleToEdit.uuid || '');
+
                 const duplicado = (schedules || []).some(s => {
-                    if (s.id === scheduleToEdit.id) return false;
+                    const targetId = String(s.id || s._id || s.uuid || '');
+                    
+                    // Se os IDs coincidirem exatamente, ignoramos para não dar conflito com ele próprio
+                    if (currentId && targetId && currentId === targetId) return false;
+
                     const dS = parseSafeToDate(s.startDate || s.data_inicio);
                     if (!dS) return false;
                     let cicloS = dS.getFullYear() - adm.getFullYear();
                     if (dS.getMonth() < adm.getMonth() || (dS.getMonth() === adm.getMonth() && dS.getDate() < adm.getDate())) cicloS--;
-                    return cicloS === ciclo;
+                    
+                    // Verifica se pertence ao mesmo funcionário e ao mesmo ciclo
+                    const sEmpId = String(s.employee_id || s.employeeId || '');
+                    const currentEmpId = String(emp.id || '');
+                    
+                    return sEmpId === currentEmpId && cicloS === ciclo;
                 });
 
                 if (duplicado) return { ok: false, msg: `Já existe outro agendamento diferente para o ciclo de ${dataInicio.getFullYear()}.` };
